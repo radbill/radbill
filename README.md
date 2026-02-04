@@ -42,13 +42,6 @@ RadBill membantu ISP mengelola:
 - WhatsApp gateway
 - TR-069/GenieACS/GoACS
 
-## Teknologi
-
-- Backend: Go
-- Database: MySQL/MariaDB
-- Frontend: HTML/CSS/JS (admin & portal)
-- Infrastruktur: Nginx + SSL Let’s Encrypt
-
 ## Instalasi Singkat (Linux)
 
 Gunakan installer resmi:
