@@ -63,6 +63,12 @@ Untuk update:
 wget -qO- https://raw.githubusercontent.com/radbill/radbill/main/update.sh | sudo bash
 ```
 
+Untuk Migrasi Pengguna Lama yang sudah install:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/radbill/radbill/main/migrate.sh | sudo bash
+```
+
 ## Lisensi
 
 Hak cipta dan lisensi mengikuti ketentuan proyek ini.
