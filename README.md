@@ -63,8 +63,6 @@ Untuk update:
 wget -qO- https://raw.githubusercontent.com/radbill/radbill/main/update.sh | sudo bash
 ```
 
-Panduan Nginx & SSL: [docs/NGINX_SSL_SETUP.md](docs/NGINX_SSL_SETUP.md)
-
 ## Lisensi
 
 Hak cipta dan lisensi mengikuti ketentuan proyek ini.
