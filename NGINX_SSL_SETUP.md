@@ -120,11 +120,14 @@ Install Certbot plugin nginx:
 sudo apt install -y certbot python3-certbot-nginx
 ```
 
-Jalankan Certbot untuk semua domain sekaligus:
+Jalankan Certbot. Anda bisa menjalankannya **tanpa parameter** agar muncul menu pilihan domain:
 
 ```bash
-sudo certbot --nginx -d my.radbill.my.id -d member.radbill.my.id -d kasir.radbill.my.id -d reseller.radbill.my.id
+sudo certbot --nginx
 ```
+
+Certbot akan membaca file Nginx Anda dan bertanya: *"Which names would you like to activate HTTPS for?"*.
+**Tekan Enter** (kosong) untuk memilih **semua domain** yang terdaftar, atau ketik nomornya (misal: `1 2 3 4`).
 
 ### PENTING: Pilih Opsi Redirect
 Saat proses berjalan, Certbot akan bertanya:
@@ -154,4 +157,5 @@ sudo certbot renew --dry-run
 **Troubleshooting:**
 - **502 Bad Gateway:** Artinya Nginx jalan, tapi aplikasi Go di port (8080/8081/dll) mati. Cek dengan `ps aux | grep main`.
 - **Situs tidak bisa diakses:** Cek firewall, pastikan port 80 dan 443 diizinkan (`sudo ufw allow 'Nginx Full'`).
+
 
