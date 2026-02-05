@@ -1,14 +1,16 @@
-# Panduan Install Nginx & SSL (Let’s Encrypt)
+# Panduan Install Nginx & SSL (Let’s Encrypt) - Multi Subdomain Setup
 
-Dokumen ini menjelaskan langkah-langkah memasang Nginx dan SSL (Let’s Encrypt) untuk RadBill pada server Ubuntu/Debian.
+Dokumen ini menjelaskan langkah-langkah memasang Nginx dan SSL (Let’s Encrypt) untuk RadBill dengan arsitektur Microservices (banyak subdomain & port) pada server Ubuntu/Debian.
 
 ## Prasyarat
 
-- Domain sudah mengarah ke IP VPS (A record)
-- Akses root/sudo
-- Port 80 & 443 terbuka
+- Domain sudah mengarah ke IP VPS (A record) untuk semua subdomain (misal: `my`, `member`, `kasir`, `reseller`).
+- Akses root/sudo pada server.
+- Port 80 & 443 terbuka di Firewall/Security Group.
 
 ## 1) Install Nginx
+
+Instal paket Nginx:
 
 ```bash
 sudo apt update
@@ -17,13 +19,15 @@ sudo systemctl enable nginx
 sudo systemctl start nginx
 ```
 
-Cek status:
+Cek status pastikan active (running):
 
 ```bash
 sudo systemctl status nginx
 ```
 
-## 2) Siapkan Konfigurasi Nginx
+## 2) Siapkan Konfigurasi Awal (HTTP)
+
+Sebelum menginstall SSL, kita harus membuat konfigurasi standar di **Port 80** terlebih dahulu agar Certbot bisa memverifikasi kepemilikan domain.
 
 Buat file konfigurasi baru:
 
@@ -31,14 +35,14 @@ Buat file konfigurasi baru:
 sudo nano /etc/nginx/sites-available/radbill
 ```
 
-Isi dengan konfigurasi berikut (ganti domain dan port aplikasi):
+Isi dengan konfigurasi berikut (sesuaikan dengan nama domain Anda):
 
 ```nginx
+# 1. API Utama/Admin (Port 8080)
 server {
     listen 80;
-    server_name example.com www.example.com;
+    server_name sub1.example.com;
 
-    # Arahkan ke aplikasi RadBill
     location / {
         proxy_pass http://127.0.0.1:8080;
         proxy_set_header Host $host;
@@ -47,76 +51,142 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
+
+# 2. Client Portal (Port 8081)
+server {
+    listen 80;
+    server_name sub2.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8081;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# 3. Cashier Portal (Port 8082)
+server {
+    listen 80;
+    server_name sub3.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8082;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# 4. Reseller Portal (Port 8083)
+server {
+    listen 80;
+    server_name sub4.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8083;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
 ```
 
-Aktifkan site:
+Simpan file (Ctrl+X, Y, Enter).
+
+Aktifkan konfigurasi tersebut dan hapus default:
 
 ```bash
 sudo ln -s /etc/nginx/sites-available/radbill /etc/nginx/sites-enabled/
+# Hapus default config jika ada agar tidak bentrok
+sudo unlink /etc/nginx/sites-enabled/default
 ```
 
-Uji konfigurasi:
+Uji konfigurasi dan Reload Nginx:
 
 ```bash
 sudo nginx -t
-```
-
-Reload Nginx:
-
-```bash
 sudo systemctl reload nginx
 ```
 
-## 3) Install SSL (Let’s Encrypt)
+## 3) Install SSL (Let’s Encrypt) Otomatis
 
-Install Certbot:
+Install Certbot plugin nginx:
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
 ```
 
-Jalankan Certbot:
+Jalankan Certbot untuk semua domain sekaligus:
 
 ```bash
-sudo certbot --nginx -d example.com -d www.example.com
+sudo certbot --nginx -d my.radbill.my.id -d member.radbill.my.id -d kasir.radbill.my.id -d reseller.radbill.my.id
 ```
 
-Ikuti prompt untuk memilih redirect HTTP ke HTTPS.
+### PENTING: Pilih Opsi Redirect
+Saat proses berjalan, Certbot akan bertanya:
 
-## 4) Cek Auto Renew SSL
+```text
+Please choose whether or not to redirect HTTP traffic to HTTPS, removing HTTP access.
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+1: No redirect - Make no further changes to the webserver configuration.
+2: Redirect - Make all requests redirect to secure HTTPS access.
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Select the appropriate number [1-2] then [enter]:
+```
 
-Cek timer:
+**Pilih angka 2 (Redirect) lalu Enter.**
 
+Ini akan membuat Certbot memodifikasi file konfigurasi Anda secara otomatis agar semua trafik non-aman (HTTP) dipaksa pindah ke aman (HTTPS).
+
+## 4) Hasil Akhir Konfigurasi (Otomatis)
+
+Setelah langkah 3 selesai, jika Anda membuka file config lagi (`cat /etc/nginx/sites-available/radbill`), hasilnya akan berubah secara otomatis:
+
+1.  **Server Block Utama:**
+    `listen 80;` akan dihapus dan digantikan dengan `listen 443 ssl;` beserta konfigurasi sertifikat (`# managed by Certbot`).
+
+2.  **Redirect Block (Di Bawah):**
+    Di bagian paling bawah file, Certbot akan menambahkan block baru untuk menangani HTTP (Port 80) yang isinya melempar (redirect 301) ke HTTPS.
+
+Contoh visual strukturnya:
+
+```nginx
+# --- APLIKASI UTAMA (HTTPS Only) ---
+server {
+    server_name my.radbill.my.id;
+    listen 443 ssl; # managed by Certbot
+    # ... ssl config ...
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        # ...
+    }
+}
+
+# --- REDIRECT CATCHER (Dibuat otomatis oleh Certbot) ---
+server {
+    if ($host = my.radbill.my.id) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+    server_name my.radbill.my.id;
+    listen 80;
+    return 404; # managed by Certbot
+}
+```
+
+## 5) Maintenance & Troubleshooting
+
+**Cek Auto Renew SSL:**
+Certbot otomatis memasang timer renew. Cek dengan:
 ```bash
 sudo systemctl status certbot.timer
-```
-
-Uji renew:
-
-```bash
 sudo certbot renew --dry-run
 ```
 
-## 5) (Opsional) Optimasi Nginx untuk HTTPS
-
-Tambahkan block berikut pada server HTTPS di file Nginx yang sudah dibuat oleh Certbot:
-
-```nginx
-# Tambahkan di dalam server { ... }
-client_max_body_size 50M;
-proxy_read_timeout 300;
-proxy_connect_timeout 300;
-proxy_send_timeout 300;
-```
-
-## Catatan Penting
-
-- Pastikan aplikasi RadBill berjalan di port yang benar (default: 8080).
-- Jika port aplikasi berbeda, ubah bagian `proxy_pass`.
-- Jika ingin multi-domain, tambahkan di `server_name`.
-
-## Troubleshooting
-
-- **Port 80/443 belum terbuka:** cek firewall VPS
-- **SSL gagal:** pastikan domain sudah resolve ke IP VPS
-- **Nginx gagal reload:** periksa error dengan `sudo nginx -t`
+**Troubleshooting:**
+- **502 Bad Gateway:** Artinya Nginx jalan, tapi aplikasi Go di port (8080/8081/dll) mati. Cek dengan `ps aux | grep main`.
+- **Situs tidak bisa diakses:** Cek firewall, pastikan port 80 dan 443 diizinkan (`sudo ufw allow 'Nginx Full'`).
