@@ -14,8 +14,23 @@ for svc in "${LEGACY_SERVICES[@]}"; do
         systemctl stop "${svc}" || true
         echo "Disabling legacy service: ${svc}"
         systemctl disable "${svc}" || true
+        
+        # Remove service file
+        if [ -f "/etc/systemd/system/${svc}.service" ]; then
+            echo "Removing service file: /etc/systemd/system/${svc}.service"
+            rm "/etc/systemd/system/${svc}.service"
+        fi
     fi
-	done
+done
+
+systemctl daemon-reload
+systemctl reset-failed
+
+# Remove legacy application directory if exists
+if [ -d "/opt/gonet" ]; then
+    echo "Removing legacy application directory: /opt/gonet"
+    rm -rf "/opt/gonet"
+fi
 
 # Detect Architecture
 ARCH=$(dpkg --print-architecture)
@@ -33,9 +48,7 @@ else
 fi
 
 echo "Downloading installer..."
-wget -q --show-progress "$URL" -O install.bin
-
-if [ $? -ne 0 ]; then
+if ! wget -q --show-progress "$URL" -O install.bin; then
     echo "Error: Failed to download installer. Please check your internet connection."
     exit 1
 fi
