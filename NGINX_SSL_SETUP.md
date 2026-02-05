@@ -142,43 +142,7 @@ Select the appropriate number [1-2] then [enter]:
 
 Ini akan membuat Certbot memodifikasi file konfigurasi Anda secara otomatis agar semua trafik non-aman (HTTP) dipaksa pindah ke aman (HTTPS).
 
-## 4) Hasil Akhir Konfigurasi (Otomatis)
-
-Setelah langkah 3 selesai, jika Anda membuka file config lagi (`cat /etc/nginx/sites-available/radbill`), hasilnya akan berubah secara otomatis:
-
-1.  **Server Block Utama:**
-    `listen 80;` akan dihapus dan digantikan dengan `listen 443 ssl;` beserta konfigurasi sertifikat (`# managed by Certbot`).
-
-2.  **Redirect Block (Di Bawah):**
-    Di bagian paling bawah file, Certbot akan menambahkan block baru untuk menangani HTTP (Port 80) yang isinya melempar (redirect 301) ke HTTPS.
-
-Contoh visual strukturnya:
-
-```nginx
-# --- APLIKASI UTAMA (HTTPS Only) ---
-server {
-    server_name my.radbill.my.id;
-    listen 443 ssl; # managed by Certbot
-    # ... ssl config ...
-    location / {
-        proxy_pass http://127.0.0.1:8080;
-        # ...
-    }
-}
-
-# --- REDIRECT CATCHER (Dibuat otomatis oleh Certbot) ---
-server {
-    if ($host = my.radbill.my.id) {
-        return 301 https://$host$request_uri;
-    } # managed by Certbot
-
-    server_name my.radbill.my.id;
-    listen 80;
-    return 404; # managed by Certbot
-}
-```
-
-## 5) Maintenance & Troubleshooting
+## 4) Maintenance & Troubleshooting
 
 **Cek Auto Renew SSL:**
 Certbot otomatis memasang timer renew. Cek dengan:
@@ -190,3 +154,4 @@ sudo certbot renew --dry-run
 **Troubleshooting:**
 - **502 Bad Gateway:** Artinya Nginx jalan, tapi aplikasi Go di port (8080/8081/dll) mati. Cek dengan `ps aux | grep main`.
 - **Situs tidak bisa diakses:** Cek firewall, pastikan port 80 dan 443 diizinkan (`sudo ufw allow 'Nginx Full'`).
+
