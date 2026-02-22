@@ -51,48 +51,6 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
-
-# 2. Client Portal (Port 8081)
-server {
-    listen 80;
-    server_name sub2.example.com;
-
-    location / {
-        proxy_pass http://127.0.0.1:8081;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-
-# 3. Cashier Portal (Port 8082)
-server {
-    listen 80;
-    server_name sub3.example.com;
-
-    location / {
-        proxy_pass http://127.0.0.1:8082;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-
-# 4. Reseller Portal (Port 8083)
-server {
-    listen 80;
-    server_name sub4.example.com;
-
-    location / {
-        proxy_pass http://127.0.0.1:8083;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
 ```
 
 Simpan file (Ctrl+X, Y, Enter).
@@ -157,5 +115,6 @@ sudo certbot renew --dry-run
 **Troubleshooting:**
 - **502 Bad Gateway:** Artinya Nginx jalan, tapi aplikasi Go di port (8080/8081/dll) mati. Cek dengan `ps aux | grep main`.
 - **Situs tidak bisa diakses:** Cek firewall, pastikan port 80 dan 443 diizinkan (`sudo ufw allow 'Nginx Full'`).
+
 
 
