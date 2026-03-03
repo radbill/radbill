@@ -1,10 +1,14 @@
-# Panduan Install Nginx & SSL (Let’s Encrypt) - Multi Subdomain Setup
+# Panduan Install Nginx & SSL (Let’s Encrypt) - RadBill Subdomain Setup
 
-Dokumen ini menjelaskan langkah-langkah memasang Nginx dan SSL (Let’s Encrypt) untuk RadBill dengan arsitektur Microservices (banyak subdomain & port) pada server Ubuntu/Debian.
+Dokumen ini menjelaskan setup Nginx + SSL untuk RadBill pada server Ubuntu/Debian dengan skenario berikut:
+
+- `my.domain` -> backend utama (`127.0.0.1:8080`)
+- `client.domain` -> client portal (`127.0.0.1:8080`, **tanpa rewrite** `/portal/client`)
+- `isolir.domain` -> halaman isolir (`127.0.0.1:8087`)
 
 ## Prasyarat
 
-- Domain sudah mengarah ke IP VPS (A record) untuk semua subdomain (misal: `my`, `member`, `kasir`, `reseller`).
+- Domain/subdomain sudah mengarah ke IP VPS (A record), minimal: `my`, `client`, `isolir`.
 - Akses root/sudo pada server.
 - Port 80 & 443 terbuka di Firewall/Security Group.
 
@@ -25,7 +29,7 @@ Cek status pastikan active (running):
 sudo systemctl status nginx
 ```
 
-## 2) Siapkan Konfigurasi Awal (HTTP)
+## 2) Siapkan Konfigurasi Awal (HTTP - sebelum SSL)
 
 Sebelum menginstall SSL, kita harus membuat konfigurasi standar di **Port 80** terlebih dahulu agar Certbot bisa memverifikasi kepemilikan domain.
 
@@ -35,16 +39,47 @@ Buat file konfigurasi baru:
 sudo nano /etc/nginx/sites-available/radbill
 ```
 
-Isi dengan konfigurasi berikut (sesuaikan dengan nama domain Anda):
+Isi dengan konfigurasi berikut (sesuaikan domain Anda):
 
 ```nginx
-# 1. API Utama/Admin (Port 8080)
+# 1) Admin/App utama -> backend 8080
 server {
     listen 80;
-    server_name sub1.example.com;
+    server_name my.example.com;
 
     location / {
         proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# 2) Client portal -> backend 8080 (tanpa rewrite /portal/client)
+server {
+    listen 80;
+    server_name client.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# 3) Isolir -> backend 8087
+server {
+    listen 80;
+    server_name isolir.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8087;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -84,8 +119,14 @@ Jalankan Certbot. Anda bisa menjalankannya **tanpa parameter** agar muncul menu 
 sudo certbot --nginx
 ```
 
-Certbot akan membaca file Nginx Anda dan bertanya: *"Which names would you like to activate HTTPS for?"*.
-**Tekan Enter** (kosong) untuk memilih **semua domain** yang terdaftar, atau ketik nomornya (misal: `1 2 3 4`).
+Certbot akan membaca file Nginx dan bertanya: *"Which names would you like to activate HTTPS for?"*.
+Tekan Enter (kosong) untuk memilih semua domain yang terdaftar, atau ketik nomornya.
+
+Contoh langsung:
+
+```bash
+sudo certbot --nginx -d my.example.com -d client.example.com -d isolir.example.com
+```
 
 ### PENTING: Pilih Opsi Redirect
 Saat proses berjalan, Certbot akan bertanya:
@@ -103,7 +144,95 @@ Select the appropriate number [1-2] then [enter]:
 
 Ini akan membuat Certbot memodifikasi file konfigurasi Anda secara otomatis agar semua trafik non-aman (HTTP) dipaksa pindah ke aman (HTTPS).
 
-## 4) Maintenance & Troubleshooting
+## 4) Contoh Konfigurasi HTTPS Final
+
+Setelah cert terpasang, struktur final yang disarankan seperti ini:
+
+```nginx
+# ===============================
+# HTTPS: Admin/App utama
+# ===============================
+server {
+    listen 443 ssl http2;
+    server_name my.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/my.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/my.example.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# ===============================
+# HTTPS: Client Portal
+# ===============================
+server {
+    listen 443 ssl http2;
+    server_name client.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/client.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/client.example.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# ===============================
+# HTTPS: Isolir
+# ===============================
+server {
+    listen 443 ssl http2;
+    server_name isolir.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/isolir.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/isolir.example.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8087;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# ===============================
+# HTTP -> HTTPS redirect
+# ===============================
+server {
+    listen 80;
+    server_name my.example.com client.example.com isolir.example.com;
+    return 301 https://$host$request_uri;
+}
+```
+
+Setelah menyimpan perubahan:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+## 5) Maintenance & Troubleshooting
 
 **Cek Auto Renew SSL:**
 Certbot otomatis memasang timer renew. Cek dengan:
@@ -113,8 +242,10 @@ sudo certbot renew --dry-run
 ```
 
 **Troubleshooting:**
-- **502 Bad Gateway:** Artinya Nginx jalan, tapi aplikasi Go di port (8080/8081/dll) mati. Cek dengan `ps aux | grep main`.
+- **502 Bad Gateway:** Nginx jalan, tapi backend di `127.0.0.1:8080` atau `127.0.0.1:8087` mati.
 - **Situs tidak bisa diakses:** Cek firewall, pastikan port 80 dan 443 diizinkan (`sudo ufw allow 'Nginx Full'`).
+- **Client masih redirect ke `/portal/client`:** pastikan tidak ada `rewrite` atau `return 302 /portal/client` di server block `client.*`.
+- **Sertifikat mismatch domain:** pastikan `ssl_certificate` dan `ssl_certificate_key` memakai path domain yang benar (jangan tertukar antar subdomain).
 
 
 
