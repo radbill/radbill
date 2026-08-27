@@ -74,34 +74,8 @@ Verifikasi direktori aplikasi:
 test ! -e /opt/radbill && echo "Direktori aplikasi sudah terhapus"
 ```
 
-## 4. Hapus database Radbill saja
 
-Lewati bagian ini jika MariaDB/MySQL akan dihapus sepenuhnya pada bagian berikutnya.
-
-Masuk ke MariaDB/MySQL:
-
-```bash
-sudo mysql
-```
-
-Jalankan SQL berikut:
-
-```sql
-DROP DATABASE IF EXISTS radius;
-DROP DATABASE IF EXISTS radius_state;
-
-DROP USER IF EXISTS 'radius'@'localhost';
-DROP USER IF EXISTS 'radius'@'127.0.0.1';
-DROP USER IF EXISTS 'radius_state'@'localhost';
-DROP USER IF EXISTS 'radius_state'@'127.0.0.1';
-
-FLUSH PRIVILEGES;
-EXIT;
-```
-
-Nama di atas adalah nilai default. Jika `DB_USER`, `STATE_DB_USER`, `DB_DSN`, atau `STATE_DB_DSN` pernah diubah, hapus database dan user sesuai konfigurasi aktual.
-
-## 5. Uninstall total MariaDB
+## 4. Uninstall total MariaDB
 
 Gunakan bagian ini hanya jika MariaDB tidak digunakan oleh aplikasi lain. Tindakan ini menghapus seluruh database di server, bukan hanya data Radbill.
 
@@ -132,33 +106,8 @@ sudo rm -f /etc/apt/sources.list.d/mariadb.list
 sudo systemctl daemon-reload
 ```
 
-## 6. Alternatif: uninstall Oracle MySQL
 
-Bagian ini hanya digunakan jika `mysql --version` menunjukkan Oracle MySQL, bukan MariaDB.
-
-```bash
-sudo systemctl disable --now mysql 2>/dev/null || true
-
-sudo apt purge -y \
-  mysql-server \
-  mysql-client \
-  mysql-common \
-  mysql-server-core-* \
-  mysql-client-core-*
-
-sudo apt autoremove --purge -y
-sudo apt autoclean
-
-sudo rm -rf /var/lib/mysql
-sudo rm -rf /etc/mysql
-sudo rm -rf /var/log/mysql
-sudo rm -rf /var/log/mysql.*
-sudo systemctl daemon-reload
-```
-
-Jangan menjalankan prosedur MariaDB dan Oracle MySQL sekaligus tanpa memeriksa paket yang terpasang.
-
-## 7. Ekstensi PHP MySQL
+## 5. Ekstensi PHP MySQL
 
 Paket `php-mysql` dan `php8.2-mysql` hanyalah ekstensi PHP untuk menghubungkan aplikasi PHP ke MySQL. Paket tersebut bukan server database dan aman dibiarkan jika masih digunakan website lain.
 
@@ -170,7 +119,7 @@ sudo apt autoremove --purge -y
 sudo apt autoclean
 ```
 
-## 8. Bersihkan konfigurasi Nginx
+## 6. Bersihkan konfigurasi Nginx
 
 Cari konfigurasi yang mengarah ke Radbill:
 
@@ -197,7 +146,7 @@ sudo certbot delete --cert-name NAMA_DOMAIN
 
 Jangan uninstall Nginx atau Certbot apabila masih digunakan website lain.
 
-## 9. Pembersihan Redis opsional
+## 7. Pembersihan Redis opsional
 
 Radbill menggunakan key Redis dengan prefix `otp:` dan `acs:session:`. Jangan menggunakan `FLUSHDB` jika Redis digunakan bersama aplikasi lain.
 
@@ -214,7 +163,7 @@ Jika instance Redis sepenuhnya khusus Radbill, database Redis dapat dibersihkan 
 redis-cli FLUSHDB
 ```
 
-## 10. Verifikasi akhir
+## 8. Verifikasi akhir
 
 Periksa apakah service dan file Radbill telah hilang:
 
