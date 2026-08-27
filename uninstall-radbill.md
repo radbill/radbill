@@ -181,16 +181,3 @@ command -v mysql || echo "Bersih: mysql client tidak ditemukan"
 test ! -d /var/lib/mysql && echo "Bersih: data MySQL/MariaDB sudah terhapus"
 ```
 
-Apabila hasil pemeriksaan hanya menampilkan `php-mysql` atau `php8.2-mysql`, server database sudah terhapus dan yang tersisa hanya ekstensi PHP.
-
-## Checklist penyelesaian
-
-- [ ] Backup sudah dibuat atau diputuskan tidak diperlukan.
-- [ ] Semua service `radbill-*` sudah dihentikan dan dihapus.
-- [ ] Direktori `/opt/radbill` sudah dihapus.
-- [ ] Log dan cron Radbill sudah dibersihkan.
-- [ ] Database Radbill atau seluruh server MariaDB/MySQL sudah dihapus.
-- [ ] Konfigurasi Nginx khusus Radbill sudah diperiksa.
-- [ ] Data Redis khusus Radbill sudah diperiksa bila diperlukan.
-- [ ] Verifikasi akhir tidak menemukan service atau binary Radbill.
-
