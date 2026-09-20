@@ -1,4 +1,6 @@
 # RadBill - Sistem Billing & Manajemen ISP
+[!WARNING]
+> **Versi ini bukan lagi prioritas update, yang di prioritaskan sekarang ada di [RadBill versi 3](https://github.com/radbill/radbill-3.0)**
 
 RadBill adalah aplikasi billing dan manajemen ISP untuk mengelola pelanggan, layanan internet, perangkat NAS, dan proses penagihan secara terintegrasi.
 
