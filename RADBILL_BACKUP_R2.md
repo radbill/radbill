@@ -78,14 +78,16 @@ provider = Cloudflare
 access_key_id = <R2_ACCESS_KEY_ID>
 secret_access_key = <R2_SECRET_ACCESS_KEY>
 endpoint = https://<ACCOUNT_ID>.r2.cloudflarestorage.com
-acl = private
 no_check_bucket = true
+no_head = true
 ```
 
 > **Catatan Penting R2:**
 > 1. Ganti `<R2_ACCESS_KEY_ID>`, `<R2_SECRET_ACCESS_KEY>`, dan `<ACCOUNT_ID>` sesuai kredensial Cloudflare R2 Anda.
 > 2. Parameter `no_check_bucket = true` wajib ada agar rclone tidak error jika API Token Cloudflare hanya memiliki izin *Object Read & Write*.
-> 3. Buat bucket di Cloudflare R2 Dashboard terlebih dahulu (misal bernama `radbill-backup`).
+> 3. Parameter `no_head = true` disarankan agar Cloudflare R2 tidak mengembalikan error `501 NotImplemented` saat rclone melakukan verifikasi metadata post-upload.
+> 4. Jangan menyertakan `acl = private` karena Cloudflare R2 tidak mendukung granular ACL AWS S3 (`x-amz-acl`).
+> 5. Buat bucket di Cloudflare R2 Dashboard terlebih dahulu (misal bernama `radbill-backup`).
 
 Uji koneksi rclone ke bucket:
 ```bash
@@ -186,6 +188,7 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] Arsip config selesai: ${CONFIG_ARCHIVE}"
 # 4. Upload seluruh file backup hari ini ke Cloudflare R2
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Mengunggah file ke Cloudflare R2 (${R2_REMOTE})..."
 rclone copy "${BACKUP_DIR}" "${R2_REMOTE}" \
+    --s3-no-head \
     --include "*_${DATE}.sql.gz" \
     --include "*_${DATE}.tar.gz"
 
